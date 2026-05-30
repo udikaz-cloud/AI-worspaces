@@ -19,8 +19,10 @@
       "main.js",
       "index.html",
       "styles.css",
-      "assets/**/*"
+      "assets/**/*",
+      "scripts/**/*"
     ],
+    "afterPack": "scripts/after-pack.cjs",
     "win": {
       "target": [
         {
@@ -37,11 +39,14 @@
       "installerIcon": "assets/icons/ai-workspace.ico",
       "uninstallerIcon": "assets/icons/ai-workspace.ico",
       "installerHeaderIcon": "assets/icons/ai-workspace.ico",
-      "shortcutName": "AI Workspace"
+      "shortcutName": "AI Workspace",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   },
   "devDependencies": {
     "electron": "^42.3.0",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "rcedit": "^4.0.1"
   }
 }
