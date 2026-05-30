@@ -1,0 +1,12 @@
+{
+  "name": "multi-ai-desktop",
+  "version": "1.0.0",
+  "description": "A standalone workspace for ChatGPT, Claude, and Gemini",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^42.3.0"
+  }
+}
