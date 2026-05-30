@@ -3,10 +3,45 @@
   "version": "1.0.0",
   "description": "A standalone workspace for ChatGPT, Claude, and Gemini",
   "main": "main.js",
+  "author": "udikaz-cloud",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.kramer.aiworkspace",
+    "productName": "AI Workspace",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "index.html",
+      "styles.css",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icons/ai-workspace.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icons/ai-workspace.ico",
+      "uninstallerIcon": "assets/icons/ai-workspace.ico",
+      "installerHeaderIcon": "assets/icons/ai-workspace.ico",
+      "shortcutName": "AI Workspace"
+    }
   },
   "devDependencies": {
-    "electron": "^42.3.0"
+    "electron": "^42.3.0",
+    "electron-builder": "^25.1.8"
   }
 }
