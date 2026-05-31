@@ -7,6 +7,7 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
     "dist:win": "electron-builder --win"
   },
   "build": {
@@ -23,6 +24,39 @@
       "scripts/**/*"
     ],
     "afterPack": "scripts/after-pack.cjs",
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "icon": "assets/icons/ai-workspace.icns",
+      "category": "public.app-category.productivity",
+      "identity": null
+    },
+    "dmg": {
+      "title": "AI Workspace",
+      "icon": "assets/icons/ai-workspace.icns",
+      "iconSize": 128,
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 140,
+          "y": 180,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
     "win": {
       "target": [
         {

@@ -1,7 +1,21 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, nativeImage } = require('electron');
+const fs = require('fs');
 const path = require('path');
 
-const appIconPath = path.join(__dirname, 'assets', 'icons', 'ai-workspace.ico');
+const iconDir = path.join(__dirname, 'assets', 'icons');
+const appIconPath = path.join(
+  iconDir,
+  process.platform === 'darwin' ? 'ai-workspace-256.png' : 'ai-workspace.ico'
+);
+
+function loadAppIcon() {
+  if (!fs.existsSync(appIconPath)) {
+    return null;
+  }
+
+  const image = nativeImage.createFromPath(appIconPath);
+  return image.isEmpty() ? null : image;
+}
 const userDataPath = path.join(app.getPath('appData'), 'AI Workspace');
 
 app.setName('AI Workspace');
@@ -9,6 +23,7 @@ app.setAppUserModelId('com.kramer.aiworkspace');
 app.setPath('userData', userDataPath);
 
 function createWindow() {
+  const appIcon = loadAppIcon();
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -16,7 +31,7 @@ function createWindow() {
     minHeight: 640,
     title: app.getName(),
     backgroundColor: '#111113',
-    icon: appIconPath,
+    ...(appIcon ? { icon: appIcon } : {}),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -35,7 +50,10 @@ function createWindow() {
 
 app.whenReady().then(() => {
   if (process.platform === 'darwin' && app.dock) {
-    app.dock.setIcon(appIconPath);
+    const appIcon = loadAppIcon();
+    if (appIcon) {
+      app.dock.setIcon(appIcon);
+    }
   }
 
   createWindow();
