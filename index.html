@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Workspace</title>
+  <link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -27,6 +28,13 @@
         <span class="tab-label">Claude</span>
       </button>
 
+      <button class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="claude-code" tabindex="-1" data-tab="claude-code" data-provider="claude">
+        <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v12h16V6H4Zm2.3 2.3L10 12l-3.7 3.7-1.4-1.4L7.17 12 4.9 9.7l1.4-1.4ZM11 15h6v2h-6v-2Z"/>
+        </svg>
+        <span class="tab-label">Claude Code</span>
+      </button>
+
       <button class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="gemini" tabindex="-1" data-tab="gemini" data-provider="gemini">
         <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 2.5c1.08 4.67 3.86 7.45 8.5 8.5-4.64 1.05-7.42 3.83-8.5 8.5-1.08-4.67-3.86-7.45-8.5-8.5 4.64-1.05 7.42-3.83 8.5-8.5Zm0 5.55A8.3 8.3 0 0 1 9.05 11 8.3 8.3 0 0 1 12 13.95 8.3 8.3 0 0 1 14.95 11 8.3 8.3 0 0 1 12 8.05Z"/>
@@ -36,6 +44,16 @@
     </nav>
 
     <div class="toolbar" aria-label="Browser controls">
+      <div class="local-session" id="local-session" hidden>
+        <button class="local-btn" type="button" id="local-btn" title="Work on a folder on this computer from claude.ai/code">
+          <span class="local-dot" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h4.6l2 2H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm2 0v12h14V8h-8.2l-2-2H5Z"/></svg>
+          <span class="local-label" id="local-label">Local folder</span>
+        </button>
+        <button class="tool-btn" type="button" id="local-stop" title="Disconnect local folder" aria-label="Disconnect local folder" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></svg>
+        </button>
+      </div>
       <button class="tool-btn" type="button" id="back-btn" title="Back" aria-label="Back">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7 1.4-1.4-5.6-5.6 5.6-5.6L14.5 5Z"/></svg>
       </button>
@@ -65,6 +83,15 @@
       allowpopups>
     </webview>
 
+    <section id="claude-code" class="ai-view code-view" aria-label="Claude Code">
+      <div class="code-bar">
+        <span class="code-folder-label">Folder</span>
+        <span class="code-folder" id="code-folder"></span>
+        <button class="code-btn" type="button" id="code-pick-folder">Open folder…</button>
+      </div>
+      <div class="code-terminal" id="code-terminal"></div>
+    </section>
+
     <webview
       id="gemini"
       class="ai-view"
@@ -74,6 +101,8 @@
     </webview>
   </main>
 
+  <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
   <script>
     const providerAccents = {
       gpt: {
@@ -112,8 +141,179 @@
       return document.querySelector('.ai-view.active');
     }
 
+    const claudeCodeView = document.getElementById('claude-code');
+    const codeFolderLabel = document.getElementById('code-folder');
+    const codePickFolderButton = document.getElementById('code-pick-folder');
+    const codeTerminalElement = document.getElementById('code-terminal');
+    let codeTerminal = null;
+    let codeFitAddon = null;
+    let codeSessionId = null;
+    let codeFolder = null;
+    let codeStartQueue = Promise.resolve();
+
+    function fitCodeTerminal() {
+      if (!codeTerminal) {
+        return;
+      }
+
+      codeFitAddon.fit();
+      if (codeSessionId !== null) {
+        window.claudeCode.resize(codeSessionId, codeTerminal.cols, codeTerminal.rows);
+      }
+    }
+
+    function setCodeFolder(folder) {
+      codeFolder = folder;
+      codeFolderLabel.textContent = folder;
+      codeFolderLabel.title = folder;
+    }
+
+    async function restartClaudeCode() {
+      if (codeSessionId !== null) {
+        window.claudeCode.stop(codeSessionId);
+        codeSessionId = null;
+      }
+
+      codeTerminal.reset();
+      fitCodeTerminal();
+      try {
+        codeSessionId = await window.claudeCode.start({
+          cwd: codeFolder,
+          cols: codeTerminal.cols,
+          rows: codeTerminal.rows
+        });
+      } catch (error) {
+        codeTerminal.write(`\x1b[31mCould not start Claude Code: ${error.message}\x1b[0m\r\n`);
+      }
+      codeTerminal.focus();
+    }
+
+    // Starts run one at a time, so a double-clicked reload can't leave a second
+    // `claude` process running unseen.
+    function startClaudeCode() {
+      codeStartQueue = codeStartQueue.catch(() => {}).then(restartClaudeCode);
+      return codeStartQueue;
+    }
+
+    async function openClaudeCode() {
+      if (codeTerminal) {
+        fitCodeTerminal();
+        codeTerminal.focus();
+        return;
+      }
+
+      codeTerminal = new Terminal({
+        cursorBlink: true,
+        fontFamily: 'Menlo, Monaco, "SF Mono", Consolas, "Courier New", monospace',
+        fontSize: 13,
+        lineHeight: 1.15,
+        allowProposedApi: true,
+        theme: {
+          background: '#1f1f1d',
+          foreground: '#e8e6e3',
+          cursor: '#d97757',
+          selectionBackground: 'rgba(217, 119, 87, .35)'
+        }
+      });
+      codeFitAddon = new FitAddon.FitAddon();
+      codeTerminal.loadAddon(codeFitAddon);
+      codeTerminal.open(codeTerminalElement);
+      codeTerminal.onData((data) => {
+        if (codeSessionId !== null) {
+          window.claudeCode.write(codeSessionId, data);
+        }
+      });
+
+      window.claudeCode.onData((id, data) => {
+        if (id === codeSessionId) {
+          codeTerminal.write(data);
+        }
+      });
+      window.claudeCode.onExit((id) => {
+        if (id === codeSessionId) {
+          codeSessionId = null;
+          codeTerminal.write('\r\n\x1b[2m[session ended — press reload to start again]\x1b[0m\r\n');
+        }
+      });
+      new ResizeObserver(fitCodeTerminal).observe(codeTerminalElement);
+
+      codeStartQueue = codeStartQueue.then(async () => setCodeFolder(await window.claudeCode.getFolder()));
+      await startClaudeCode();
+    }
+
+    const claudeView = document.getElementById('claude');
+    const localSessionControls = document.getElementById('local-session');
+    const localButton = document.getElementById('local-btn');
+    const localLabel = document.getElementById('local-label');
+    const localStopButton = document.getElementById('local-stop');
+
+    function folderName(folder) {
+      return folder.split(/[\\/]/).filter(Boolean).pop() || folder;
+    }
+
+    function setLocalState(state, folder) {
+      localSessionControls.dataset.state = state;
+      localStopButton.hidden = state === 'idle';
+      localLabel.textContent = state === 'idle'
+        ? 'Local folder'
+        : state === 'starting'
+          ? `Connecting ${folderName(folder)}…`
+          : folderName(folder);
+      localButton.title = state === 'idle'
+        ? 'Work on a folder on this computer from claude.ai/code'
+        : `${folder}\nClick to switch folder`;
+    }
+
+    localButton.addEventListener('click', async () => {
+      const folder = await window.claudeCode.pickFolder();
+      if (!folder) {
+        return;
+      }
+
+      setLocalState('starting', folder);
+      try {
+        await window.localSession.start(folder);
+      } catch (error) {
+        setLocalState('idle');
+        alert(`Could not start a local session for ${folder}:\n\n${error.message}`);
+      }
+    });
+
+    localStopButton.addEventListener('click', () => {
+      window.localSession.stop();
+      setLocalState('idle');
+    });
+
+    window.localSession.onStatus((status) => {
+      if (status.state === 'connected') {
+        setLocalState('connected', status.folder);
+        claudeView.loadURL(status.url);
+      } else if (status.state === 'stopped') {
+        setLocalState('idle');
+        if (status.message) {
+          alert(`The local session for ${status.folder} stopped:\n\n${status.message}`);
+        }
+      } else {
+        setLocalState(status.state, status.folder);
+      }
+    });
+
+    codePickFolderButton.addEventListener('click', async () => {
+      const folder = await window.claudeCode.pickFolder();
+      if (folder) {
+        setCodeFolder(folder);
+        await startClaudeCode();
+      }
+    });
+
     function updateNavigationState() {
       const view = activeView();
+      if (view === claudeCodeView) {
+        backButton.disabled = true;
+        forwardButton.disabled = true;
+        return;
+      }
+
       if (!view || !view.canGoBack) {
         return;
       }
@@ -162,6 +362,11 @@
 
       updateGlider();
       updateNavigationState();
+      localSessionControls.hidden = tabId !== 'claude';
+
+      if (tabId === 'claude-code') {
+        openClaudeCode();
+      }
     }
 
     tabButtons.forEach((button) => {
@@ -209,7 +414,11 @@
 
     reloadButton.addEventListener('click', () => {
       const view = activeView();
-      if (view) {
+      if (view === claudeCodeView) {
+        if (codeTerminal) {
+          startClaudeCode();
+        }
+      } else if (view) {
         view.reload();
       }
     });
