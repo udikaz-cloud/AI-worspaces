@@ -54,6 +54,9 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></svg>
         </button>
       </div>
+      <button class="tool-btn" type="button" id="home-btn" title="Return to service home" aria-label="Return to service home">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 10 9h-3v9h-5v-6h-4v6H5v-9H2l10-9Zm0 2.7-5 4.5V19h1v-6h8v6h1v-8.8l-5-4.5Z"/></svg>
+      </button>
       <button class="tool-btn" type="button" id="back-btn" title="Back" aria-label="Back">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7 1.4-1.4-5.6-5.6 5.6-5.6L14.5 5Z"/></svg>
       </button>
@@ -136,6 +139,28 @@
     const backButton = document.getElementById('back-btn');
     const forwardButton = document.getElementById('forward-btn');
     const reloadButton = document.getElementById('reload-btn');
+    const homeButton = document.getElementById('home-btn');
+    const serviceHomes = {
+      chatgpt: 'https://chatgpt.com',
+      claude: 'https://claude.ai',
+      gemini: 'https://gemini.google.com'
+    };
+
+    function isGoogleSignIn(view) {
+      try {
+        return new URL(view.getURL()).hostname === 'accounts.google.com';
+      } catch {
+        return false;
+      }
+    }
+
+    function returnToServiceHome(view) {
+      const home = serviceHomes[view?.id];
+      if (home) {
+        // Keep the app's existing session; only leave the failed login page.
+        view.loadURL(home).catch((error) => console.error('Could not return to service home:', error));
+      }
+    }
 
     function activeView() {
       return document.querySelector('.ai-view.active');
@@ -308,6 +333,10 @@
 
     function updateNavigationState() {
       const view = activeView();
+      homeButton.disabled = !serviceHomes[view?.id];
+      const reloadLabel = isGoogleSignIn(view) ? 'Return to service home' : 'Reload';
+      reloadButton.title = reloadLabel;
+      reloadButton.setAttribute('aria-label', reloadLabel);
       if (view === claudeCodeView) {
         backButton.disabled = true;
         forwardButton.disabled = true;
@@ -412,12 +441,17 @@
       }
     });
 
+    homeButton.addEventListener('click', () => returnToServiceHome(activeView()));
+
     reloadButton.addEventListener('click', () => {
       const view = activeView();
       if (view === claudeCodeView) {
         if (codeTerminal) {
           startClaudeCode();
         }
+      } else if (isGoogleSignIn(view)) {
+        // Refreshing Google's rejected embedded-browser flow cannot recover it.
+        returnToServiceHome(view);
       } else if (view) {
         view.reload();
       }
