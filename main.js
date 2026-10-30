@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, shell, nativeImage, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, session, shell, nativeImage, ipcMain, dialog, webContents } = require('electron');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -429,6 +429,29 @@ onFromApp('claude-code:write', (_event, id, data) => {
 
 onFromApp('claude-code:resize', (_event, id, cols, rows) => {
   terminals.get(id)?.term.resize(cols, rows);
+});
+
+// The shell can end up with the keyboard after an image attaches. Cmd+V then
+// never reaches ChatGPT, so a later paste only works once a click (new chat)
+// focuses the page again.
+onFromApp('webview:paste', async (_event, id) => {
+  const contents = webContents.fromId(id);
+  if (!contents || contents.isDestroyed()) {
+    return;
+  }
+
+  contents.focus();
+  try {
+    await contents.executeJavaScript(`(() => {
+      const composer = document.querySelector('form div.ProseMirror, form textarea, #prompt-textarea')
+        || document.querySelector('div.ProseMirror, textarea, div[contenteditable="true"]');
+      if (composer) composer.focus();
+    })()`);
+  } catch {}
+
+  if (!contents.isDestroyed()) {
+    contents.paste();
+  }
 });
 
 onFromApp('claude-code:stop', (_event, id) => {

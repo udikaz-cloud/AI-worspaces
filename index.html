@@ -457,6 +457,26 @@
       }
     });
 
+    window.addEventListener('keydown', (event) => {
+      if (!window.webviewPaste || event.key !== 'v' || event.shiftKey || event.altKey) {
+        return;
+      }
+      if (!(event.metaKey || event.ctrlKey)) {
+        return;
+      }
+
+      const view = activeView();
+      if (!view || typeof view.getWebContentsId !== 'function' || document.activeElement === view) {
+        return;
+      }
+      if (event.target && event.target.closest && event.target.closest('#claude-code')) {
+        return;
+      }
+
+      event.preventDefault();
+      window.webviewPaste.paste(view.getWebContentsId());
+    });
+
     window.addEventListener('load', updateGlider);
     window.addEventListener('resize', updateGlider);
     applyProviderAccent('gpt');

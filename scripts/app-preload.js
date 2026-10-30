@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('claudeCode', {
   onExit: (callback) => ipcRenderer.on('claude-code:exit', (_event, id, exitCode) => callback(id, exitCode))
 });
 
+contextBridge.exposeInMainWorld('webviewPaste', {
+  paste: (id) => ipcRenderer.send('webview:paste', id)
+});
+
 contextBridge.exposeInMainWorld('localSession', {
   start: (folder) => ipcRenderer.invoke('local-session:start', folder),
   stop: () => ipcRenderer.invoke('local-session:stop'),
